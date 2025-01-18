@@ -27,7 +27,6 @@ def get_constellation_number(month, day):
         return 11
 
 
-
 name = input("请输入你的名字：")
 birth_date_str = input("请输入你的生日（格式为M/D）：")
 try:
