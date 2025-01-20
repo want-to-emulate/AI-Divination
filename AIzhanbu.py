@@ -27,27 +27,27 @@ def get_constellation_number(month, day):
         return 11
 
 
-name = input("ÇëÊäÈëÄãµÄÃû×Ö£º")
-birth_date_str = input("ÇëÊäÈëÄãµÄÉúÈÕ£¨¸ñÊ½ÎªM/D£©£º")
+name = input("è¯·è¾“å…¥ä½ çš„åå­—ï¼š")
+birth_date_str = input("è¯·è¾“å…¥ä½ çš„ç”Ÿæ—¥ï¼ˆæ ¼å¼ä¸ºM/Dï¼‰ï¼š")
 try:
     month, day = map(int, birth_date_str.split('/'))
     constellation_number = get_constellation_number(month, day)
     a=constellation_number
 except ValueError:
-    print("ÊäÈëµÄÈÕÆÚ¸ñÊ½²»ÕıÈ·£¬Çë°´ÕÕM/DµÄ¸ñÊ½ÊäÈë¡£")
+    print("è¾“å…¥çš„æ—¥æœŸæ ¼å¼ä¸æ­£ç¡®ï¼Œè¯·æŒ‰ç…§M/Dçš„æ ¼å¼è¾“å…¥ã€‚")
 
 
 
 
 import requests
 
-# ÄúµÄÃÜÔ¿
-api_secret = "UHbh7CMB4midIKcrCInzS7i0j"
-# ÇëÇóÔñÈÕÔñÊ±½Ó¿Ú
+# æ‚¨çš„å¯†é’¥
+api_secret = "***********************"
+# è¯·æ±‚æ‹©æ—¥æ‹©æ—¶æ¥å£
 gateway_host_url = "https://api.yuanfenju.com/index.php/v1/Zhanbu/yunshi"
 
 
-# ÇëÇó²ÎÊı
+# è¯·æ±‚å‚æ•°
 request_data = {
     'api_key':api_secret,
     'type': '0',
