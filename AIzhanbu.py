@@ -40,14 +40,33 @@ def get_constellation_number(month, day):
 # 接收生日信息
 def receive_birthday():
     print("等待接收数据...")
+    buffer = b''  # 用于存储接收到的字节数据
     while True:
         if ser.in_waiting > 0:
-            data = ser.read(ser.in_waiting).decode('gbk')  # 读取串口数据
-            print(f"接收到数据: {data}")
-            if data.startswith("01 02 03 04"):  # 判断是否为生日信息
-                birth_date_str = data.split(" ")[-1]  # 提取生日信息
-                print(f"提取到的生日信息: {birth_date_str}")
-                return birth_date_str
+            # 增加一点延迟，确保数据完全发送
+            time.sleep(0.2)
+            raw_data = ser.read(ser.in_waiting)
+            buffer += raw_data
+            print(f"接收到的原始字节数据: {buffer}")
+            try:
+                data = buffer.decode('utf-8')
+                print(f"接收到数据: {data}")
+                # 检查数据是否包含生日信息
+                if ' ' in data:
+                    birth_date_str = data.split(" ")[-1]
+                    if len(birth_date_str.split('-')) == 2:
+                        return birth_date_str
+            except UnicodeDecodeError:
+                try:
+                    data = buffer.decode('gbk')
+                    print(f"接收到数据: {data}")
+                    # 检查数据是否包含生日信息
+                    if ' ' in data:
+                        birth_date_str = data.split(" ")[-1]
+                        if len(birth_date_str.split('-')) == 2:
+                            return birth_date_str
+                except UnicodeDecodeError:
+                    print("无法使用utf-8或gbk解码接收到的数据。")
         time.sleep(0.1)  # 避免 CPU 占用过高
 
 # 发送数据到电阻屏
@@ -93,7 +112,7 @@ if __name__ == "__main__":
         gateway_host_url = "https://api.yuanfenju.com/index.php/v1/Zhanbu/yunshi"
         request_data = {
             'api_key': api_secret,
-            'type': '1',
+            'type': '0',
             'title_yunshi': str(constellation_number),
         }
         api_response = process_host(request_data, gateway_host_url)
@@ -106,10 +125,10 @@ if __name__ == "__main__":
             content4 = api_response.get("content4", "无内容4")
 
             # 发送到电阻屏的4个文本框
-            send_to_screen("t1", content1)  # 发送到t1文本框
-            send_to_screen("t2", content2)  # 发送到t2文本框
-            send_to_screen("t3", content3)  # 发送到t3文本框
-            send_to_screen("t4", content4)  # 发送到t4文本框
+            send_to_screen("t10", content1)  # 发送到t10文本框
+            send_to_screen("t11", content2)  # 发送到t11文本框
+            send_to_screen("t12", content3)  # 发送到t12文本框
+            send_to_screen("t13", content4)  # 发送到t13文本框
         else:
             print("未获取到API数据，请检查API请求。")
     except KeyboardInterrupt:
