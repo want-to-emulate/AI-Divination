@@ -1,0 +1,361 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "tjc_usart_hmi.h"
+#define FRAME_LENGTH 7
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart2;
+
+/* USER CODE BEGIN PV */
+uint8_t RxBuffer[1];  // 中断接收缓冲区
+// 添加全局变量
+typedef enum {
+    WAITING_HEADER,
+    RECEIVING_DATA
+} ReceiveState;
+
+typedef struct {
+    uint8_t buffer[64];
+    uint16_t index;
+    ReceiveState state;
+} BirthdayReceiver;
+
+BirthdayReceiver birthday_receiver;
+const char* constellation_names[12] = {
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
+};
+
+uint8_t api_response_content[4][64] = {
+    "Content1", "Content2", "Content3", "Content4"
+};
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_USART2_UART_Init(void);
+/* USER CODE BEGIN PFP */
+
+// 函数声明
+uint8_t get_constellation_number(uint8_t month, uint8_t day);
+void process_received_data(uint8_t data);
+void send_to_screen(const char* widget, const char* content);
+void parse_birthday(const char* str);
+void simulate_api_request(uint8_t constellation_num);
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  /* USER CODE BEGIN 2 */
+initRingBuffer();//初始化环形缓冲区
+HAL_UART_Receive_IT(&TJC_UART,RxBuffer,1);//打开串口接收中断
+int a = 100;
+char str[100];
+uint32_t nowtime = HAL_GetTick();
+// 初始化代码添加
+birthday_receiver.state = WAITING_HEADER;
+birthday_receiver.index = 0;
+HAL_UART_Receive_IT(&huart2, RxBuffer, 1); // 启用接收中断
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+	  // 主循环可以添加其他任务
+    static uint32_t last_tick = 0;
+    if(HAL_GetTick() - last_tick > 1000) {
+        last_tick = HAL_GetTick();
+        // 每秒执行的任务
+    }
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+  }
+  /* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+// 星座判断函数
+uint8_t get_constellation_number(uint8_t month, uint8_t day) {
+    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 0;
+    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 1;
+    if ((month == 5 && day >= 21) || (month == 6 && day <= 21)) return 2;
+    if ((month == 6 && day >= 22) || (month == 7 && day <= 22)) return 3;
+    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 4;
+    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 5;
+    if ((month == 9 && day >= 23) || (month == 10 && day <= 23)) return 6;
+    if ((month == 10 && day >= 24) || (month == 11 && day <= 22)) return 7;
+    if ((month == 11 && day >= 23) || (month == 12 && day <= 21)) return 8;
+    if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return 9;
+    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 10;
+    return 11; // Pisces
+}
+
+// 屏幕发送函数
+void send_to_screen(const char* widget, const char* content) {
+    char buffer[128];
+    int len = snprintf(buffer, sizeof(buffer), "%s.txt=\"%s\"\xFF\xFF\xFF", widget, content);
+    HAL_UART_Transmit(&huart2, (uint8_t*)buffer, len, 100);
+}
+
+// 数据解析状态机
+void process_received_data(uint8_t data) {
+    static uint8_t month = 0, day = 0;
+    static uint8_t parse_state = 0; // 0:等待月 1:等待日
+    
+    switch(birthday_receiver.state) {
+        case WAITING_HEADER:
+            if(data == 0xAA) { // 自定义帧头
+                birthday_receiver.state = RECEIVING_DATA;
+                birthday_receiver.index = 0;
+            }
+            break;
+            
+        case RECEIVING_DATA:
+            if(data == 0x55) { // 自定义帧尾
+                birthday_receiver.buffer[birthday_receiver.index] = '\0';
+                parse_birthday((char*)birthday_receiver.buffer);
+                birthday_receiver.state = WAITING_HEADER;
+            } else {
+                if(birthday_receiver.index < sizeof(birthday_receiver.buffer)-1) {
+                    birthday_receiver.buffer[birthday_receiver.index++] = data;
+                }
+            }
+            break;
+    }
+}
+
+// 生日解析函数
+void parse_birthday(const char* str) {
+    uint8_t month = 0, day = 0;
+    if(sscanf(str, "%hhu-%hhu", &month, &day) == 2) {
+        if(month >=1 && month <=12 && day >=1 && day <=31) {
+            uint8_t cnum = get_constellation_number(month, day);
+            simulate_api_request(cnum);
+            return;
+        }
+    }
+    send_to_screen("t13", "Invalid Date");
+}
+
+// 模拟API请求
+void simulate_api_request(uint8_t constellation_num) {
+    // 这里可以添加实际的网络请求代码
+    // 目前使用模拟数据
+    for(int i=0; i<4; i++) {
+        snprintf((char*)api_response_content[i], 
+                sizeof(api_response_content[i]),
+                "%s info %d", 
+                constellation_names[constellation_num], 
+                i+1);
+    }
+    
+    // 更新所有文本框
+    send_to_screen("t10", (char*)api_response_content[0]);
+    send_to_screen("t11", (char*)api_response_content[1]);
+    send_to_screen("t12", (char*)api_response_content[2]);
+    send_to_screen("t13", (char*)api_response_content[3]);
+}
+
+// 串口接收回调
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if(huart->Instance == USART2) {
+        process_received_data(RxBuffer[0]);
+        HAL_UART_Receive_IT(&huart2, RxBuffer, 1);
+    }
+}
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
